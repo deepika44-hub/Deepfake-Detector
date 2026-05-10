@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lok-Setu Cyber Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8f9fa; }
+        .hero-pattern {
+            background-color: #002147;
+            background-image: linear-gradient(rgba(0, 33, 71, 0.85), rgba(0, 33, 71, 0.85)), url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/India_Gate_in_New_Delhi_03-2016.jpg/1200px-India_Gate_in_New_Delhi_03-2016.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body x-data="appData()" x-cloak class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-10 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" alt="Emblem" class="h-10">
+                <div>
+                    <h1 class="text-xl font-bold text-[#003366] leading-tight font-sans tracking-tight">LOK-SETU <span class="text-gray-500 font-normal text-sm">(लोक-सेतु)</span></h1>
+                    <p class="text-xs text-gray-500 tracking-wide font-semibold" x-text="t('subtitle_short')">CITIZEN SERVICES PORTAL | GOVT. OF INDIA</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Language Selector -->
+                <select x-model="lang" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 block p-1.5 font-bold outline-none">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी</option>
+                    <option value="te">తెలుగు</option>
+                </select>
+
+                <div x-show="currentUser" class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-gray-700 bg-gray-100 py-1.5 px-3 rounded-full border border-gray-200 hidden md:inline-flex">
+                        <i class="fas" :class="view === 'admin' ? 'fa-shield-alt text-red-600' : 'fa-user-circle text-blue-600'"></i>
+                        <span class="ml-2" x-text="currentUser"></span>
+                    </span>
+                    <button @click="logout()" class="text-sm bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded transition font-medium border border-red-100" x-text="t('logout')">Logout</button>
+                </div>
+            </div>
+        </div>
+        <div class="bg-[#003366] text-white py-2 px-4 text-sm border-b-4 border-orange-500 flex items-center">
+            <span class="font-bold mr-3 whitespace-nowrap"><i class="fas fa-bullhorn mr-1"></i> <span x-text="t('announcement')"></span></span>
+            <marquee behavior="scroll" direction="left" class="flex-1 font-medium tracking-wide">
+                Beware of fraudulent 'TRAI Disconnection' calls and fake SBI KYC SMS containing malicious APK files. Do not share OTPs with unverified sources.   |   ✅ NEW FEATURE: Track your registered cyber complaints instantly using the National Dispatch Router.
+            </marquee>
+        </div>
+    </header>
+
+    <!-- Global Error Notification -->
+    <div x-show="notification.show" class="fixed top-24 right-4 z-50 animate-fade-in transition-all">
+        <div :class="notification.type === 'error' ? 'bg-red-500' : 'bg-green-500'" class="text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
+            <i class="fas" :class="notification.type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
+            <span x-text="notification.msg" class="font-medium"></span>
+        </div>
+    </div>
+
+    <!-- MAIN VIEWS -->
+
+    <!-- 1. LOGIN VIEW -->
+    <main class="flex-1 flex flex-col items-center justify-center p-6 bg-gray-100" x-show="view === 'login'">
+        <div class="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div class="flex border-b border-gray-200">
+                <button @click="authTab = 'citizen_login'" :class="authTab.startsWith('citizen') ? 'border-b-2 border-blue-600 text-blue-700 bg-blue-50/50' : 'text-gray-500 hover:bg-gray-50'" class="flex-1 py-4 text-center text-sm font-semibold transition" x-text="t('citizen_login')"></button>
+                <button @click="authTab = 'admin_login'" :class="authTab === 'admin_login' ? 'border-b-2 border-red-600 text-red-700 bg-red-50/50' : 'text-gray-500 hover:bg-gray-50'" class="flex-1 py-4 text-center text-sm font-semibold transition" x-text="t('admin_login')"></button>
+            </div>
+            
+            <div class="p-8">
+                <!-- Citizen Login -->
+                <div x-show="authTab === 'citizen_login'" class="space-y-4 animate-fade-in">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-user-lock text-4xl text-blue-900 mb-3"></i>
+                        <h2 class="text-xl font-bold text-gray-800" x-text="t('citizen_login')">Citizen Verification</h2>
+                    </div>
+                    <input type="text" x-model="username" placeholder="Username / Aadhaar ID" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                    <input type="password" x-model="password" placeholder="Password" @keyup.enter="loginCitizen()" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                    <button @click="loginCitizen()" :disabled="isLoading" class="w-full bg-[#004B87] hover:bg-blue-800 disabled:opacity-70 text-white font-bold py-3 rounded shadow transition duration-200 mt-2">
+                        <i class="fas fa-spinner fa-spin mr-2" x-show="isLoading"></i>
+                        <span x-text="t('verify_login')"></span>
+                    </button>
+                    <p class="text-center text-sm text-gray-500 mt-4">New user? <a href="#" @click.prevent="authTab = 'citizen_register'" class="text-blue-600 hover:underline font-medium" x-text="t('register')">Register here</a></p>
+                </div>
+                
+                <!-- Citizen Register -->
+                <div x-show="authTab === 'citizen_register'" class="space-y-4 animate-fade-in">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-user-plus text-4xl text-green-600 mb-3"></i>
+                        <h2 class="text-xl font-bold text-gray-800" x-text="t('register')">Create Account</h2>
+                    </div>
+                    <input type="text" x-model="regUsername" placeholder="Choose a Username" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                    <input type="password" x-model="regPassword" placeholder="Create a Password" @keyup.enter="registerCitizen()" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                    <button @click="registerCitizen()" :disabled="isLoading" class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-70 text-white font-bold py-3 rounded shadow transition duration-200 mt-2">
+                        <i class="fas fa-spinner fa-spin mr-2" x-show="isLoading"></i>
+                        <span x-text="t('register')">Register Account</span>
+                    </button>
+                    <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <a href="#" @click.prevent="authTab = 'citizen_login'" class="text-blue-600 hover:underline font-medium">Login</a></p>
+                </div>
+                
+                <!-- Admin Login -->
+                <div x-show="authTab === 'admin_login'" class="space-y-4 animate-fade-in">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-shield-alt text-4xl text-red-700 mb-3"></i>
+                        <h2 class="text-xl font-bold text-gray-800" x-text="t('admin_login')">Law Enforcement Access</h2>
+                    </div>
+                    <input type="text" x-model="adminUser" placeholder="Officer ID" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition">
+                    <input type="password" x-model="adminPass" placeholder="Secure PIN" @keyup.enter="loginAdmin()" class="w-full px-4 py-3 bg-gray-50 rounded border border-gray-300 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition">
+                    <button @click="loginAdmin()" :disabled="isLoading" class="w-full bg-red-700 hover:bg-red-800 disabled:opacity-70 text-white font-bold py-3 rounded shadow transition duration-200 mt-2">
+                        <i class="fas fa-spinner fa-spin mr-2" x-show="isLoading"></i>
+                        <span x-text="t('verify_login')">Secure Login</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 2. CITIZEN VIEW -->
+    <main x-show="view === 'citizen'" class="flex-1 flex flex-col bg-gray-50">
+        <!-- Hero Banner -->
+        <div class="hero-pattern py-12 px-4 text-center shadow-inner border-b-4 border-[#004B87]">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-3 drop-shadow-lg tracking-tight" x-text="t('title')">National Cyber Crime Portal</h1>
+            <p class="text-lg md:text-xl text-gray-200 font-medium drop-shadow-md" x-text="t('subtitle')">Empowering Citizens with AI-Driven Threat Intelligence</p>
+        </div>
+        
+        <div class="max-w-7xl mx-auto w-full px-4 py-8 flex flex-col md:flex-row gap-8">
+            <!-- Sidebar Navigation -->
+            <div class="w-full md:w-64 flex-shrink-0">
+                <div class="bg-white rounded-xl shadow border border-gray-200 p-3 space-y-1 sticky top-4">
+                    <h3 class="font-bold text-gray-400 mb-2 px-3 pt-2 text-xs uppercase tracking-wider">Verification Tools</h3>
+                    
+                    <button @click="scannerType = 'text'; resetScan()" :class="scannerType === 'text' ? 'bg-blue-50/80 border-blue-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition">
+                        <i class="fas fa-comment-sms w-5 text-center text-lg text-blue-500"></i> <span x-text="t('text_scan')" :class="scannerType === 'text' ? 'text-blue-800 font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                    <button @click="scannerType = 'media'; resetScan()" :class="scannerType === 'media' ? 'bg-purple-50/80 border-purple-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition">
+                        <i class="fas fa-photo-video w-5 text-center text-lg text-purple-500"></i> <span x-text="t('media_scan')" :class="scannerType === 'media' ? 'text-purple-800 font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                    <button @click="scannerType = 'url'; resetScan()" :class="scannerType === 'url' ? 'bg-orange-50/80 border-orange-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition">
+                        <i class="fas fa-link w-5 text-center text-lg text-orange-500"></i> <span x-text="t('url_scan')" :class="scannerType === 'url' ? 'text-orange-800 font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                    <button @click="scannerType = 'upi'; resetScan()" :class="scannerType === 'upi' ? 'bg-green-50/80 border-green-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition">
+                        <i class="fas fa-rupee-sign w-5 text-center text-lg text-green-500"></i> <span x-text="t('upi_scan')" :class="scannerType === 'upi' ? 'text-green-800 font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                    
+                    <div class="pt-4 pb-2"><hr class="border-gray-100"></div>
+                    <h3 class="font-bold text-gray-400 mb-2 px-3 text-xs uppercase tracking-wider">Official Reporting</h3>
+                    <button @click="scannerType = 'direct'; resetScan()" :class="scannerType === 'direct' ? 'bg-red-50/80 border-red-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition">
+                        <i class="fas fa-file-signature w-5 text-center text-lg text-red-600"></i> <span x-text="t('direct_fir')" :class="scannerType === 'direct' ? 'text-red-800 font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                    <button @click="scannerType = 'track'; fetchMyComplaints()" :class="scannerType === 'track' ? 'bg-gray-800 text-white shadow-sm' : 'hover:bg-gray-50 border-transparent'" class="w-full text-left px-4 py-3 rounded-lg border flex items-center gap-3 transition mt-2">
+                        <i class="fas fa-history w-5 text-center text-lg" :class="scannerType === 'track' ? 'text-white' : 'text-gray-600'"></i> <span x-text="t('track_fir')" :class="scannerType === 'track' ? 'font-bold' : 'text-gray-700 font-medium'"></span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="flex-1 min-w-0">
+                <div class="bg-white rounded-xl shadow border border-gray-200 p-6 md:p-8 relative overflow-hidden">
+                    
+                    <!-- Scanner Interfaces -->
+                    <div x-show="['text', 'url', 'upi', 'media'].includes(scannerType)">
+                        <div class="border-b border-gray-100 pb-4 mb-6">
+                            <h2 class="text-2xl font-bold text-gray-900 tracking-tight" x-text="t(scannerType + '_scan')"></h2>
+                        </div>
+                        
+                        <!-- Text Scanner -->
+                        <div x-show="scannerType === 'text'" class="space-y-4 animate-fade-in">
+                            <textarea x-model="textInput" rows="5" placeholder="Paste the suspicious SMS, WhatsApp message, or Email content here..." class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none text-gray-800"></textarea>
+                            <button @click="runScan('text')" :disabled="isScanning || !textInput.trim()" class="bg-[#004B87] hover:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 px-6 rounded shadow-sm transition flex items-center justify-center gap-2">
+                                <i class="fas" :class="isScanning ? 'fa-spinner fa-spin' : 'fa-search'"></i>
+                                <span x-text="t('scan_content')"></span>
+                            </button>
+                        </div>
+
+                        <!-- URL Scanner -->
+                        <div x-show="scannerType === 'url'" class="space-y-4 animate-fade-in">
+                            <div class="relative">
+                                <i class="fas fa-globe absolute left-4 top-4 text-gray-400"></i>
+                                <input type="text" x-model="urlInput" placeholder="Enter Suspicious Link (e.g., http://free-money.update.com)" class="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-lg border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition text-gray-800 font-mono">
+                            </div>
+                            <button @click="runScan('url')" :disabled="isScanning || !urlInput.trim()" class="bg-[#004B87] hover:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 px-6 rounded shadow-sm transition flex items-center justify-center gap-2">
+                                <i class="fas" :class="isScanning ? 'fa-spinner fa-spin' : 'fa-shield-virus'"></i>
+                                <span x-text="t('scan_content')"></span>
+                            </button>
+                        </div>
+
+                        <!-- UPI Scanner -->
+                        <div x-show="scannerType === 'upi'" class="space-y-4 animate-fade-in">
+                            <div class="relative">
+                                <i class="fas fa-wallet absolute left-4 top-4 text-gray-400"></i>
+                                <input type="text" x-model="upiInput" placeholder="Enter Suspect's UPI ID (e.g., scammer@ybl) or Bank Account" class="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-lg border border-gray-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition text-gray-800 font-mono">
+                            </div>
+                            <button @click="runScan('upi')" :disabled="isScanning || !upiInput.trim()" class="bg-[#004B87] hover:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 px-6 rounded shadow-sm transition flex items-center justify-center gap-2">
+                                <i class="fas" :class="isScanning ? 'fa-spinner fa-spin' : 'fa-search-dollar'"></i>
+                                <span x-text="t('scan_content')"></span>
+                            </button>
+                        </div>
+
+                        <!-- Media Scanner -->
+                        <div x-show="scannerType === 'media'" class="space-y-5 animate-fade-in">
+                            <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 hover:bg-gray-100 transition relative">
+                                <input type="file" id="mediaUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileChange">
+                                <div class="pointer-events-none">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-3" x-show="!mediaFile"></i>
+                                    <i class="fas fa-file-check text-4xl text-green-500 mb-3" x-show="mediaFile"></i>
+                                    <div class="text-blue-700 font-semibold text-lg mb-1" x-text="mediaFile ? mediaFile.name : 'Upload File'"></div>
+                                    <div class="text-gray-500 text-sm font-medium">Supported: PNG, JPG, WAV, MP3</div>
+                                </div>
+                            </div>
+                            <button @click="runScan('media')" :disabled="isScanning || !mediaFile" class="bg-[#004B87] hover:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 px-6 rounded shadow-sm transition flex items-center justify-center gap-2">
+                                <i class="fas" :class="isScanning ? 'fa-spinner fa-spin' : 'fa-microchip'"></i>
+                                <span x-text="t('scan_content')"></span>
+                            </button>
+                        </div>
+
+                        <!-- Scanning Logs Terminal -->
+                        <div x-show="scanLogs.length > 0" class="mt-8 bg-gray-900 rounded-lg p-5 font-mono text-sm shadow-inner">
+                            <div class="flex items-center gap-2 mb-3 border-b border-gray-700 pb-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                <span class="text-gray-400 text-xs ml-2 font-bold tracking-widest uppercase">Central Node</span>
+                            </div>
+                            <template x-for="log in scanLogs">
+                                <div class="text-green-400 mb-1.5 leading-tight opacity-90">> <span x-text="log"></span></div>
+                            </template>
+                            <div x-show="isScanning" class="text-green-400 animate-pulse">> _</div>
+                        </div>
+
+                        <!-- Results & Complaint Routing -->
+                        <div x-show="scanScore !== null && !isScanning" class="mt-8 animate-fade-in">
+                            <div class="p-5 rounded-lg mb-6 flex items-center gap-5 shadow-sm border" :class="scanScore > 0.50 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'">
+                                <div class="p-3 rounded-full" :class="scanScore > 0.50 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'">
+                                    <i :class="scanScore > 0.50 ? 'fas fa-shield-virus text-3xl' : 'fas fa-shield-check text-3xl'"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-xl mb-0.5 tracking-tight" :class="scanScore > 0.50 ? 'text-red-800' : 'text-green-800'" x-text="scanScore > 0.50 ? t('threat_detected') : t('no_threat')"></h3>
+                                    <p :class="scanScore > 0.50 ? 'text-red-700' : 'text-green-700'" class="font-medium">
+                                        Score: <span class="font-bold font-mono text-lg" x-text="`${(scanScore * 100).toFixed(1)}%`"></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div x-show="!receipt" class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                                <h3 class="font-bold text-gray-900 text-lg mb-1"><i class="fas fa-share-square text-blue-600 mr-2"></i> Forward Evidence</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 mt-4">
+                                    <div>
+                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">District / Pincode *</label>
+                                        <input type="text" x-model="complaintLoc" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Suspect ID *</label>
+                                        <input type="text" x-model="complaintSuspect" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-bold text-gray-700 mb-1.5">Additional Context</label>
+                                        <textarea x-model="complaintDetails" rows="2" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none resize-none"></textarea>
+                                    </div>
+                                </div>
+                                <button @click="fileComplaint(false)" :disabled="isSubmitting || !complaintLoc.trim() || !complaintSuspect.trim()" class="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 rounded shadow transition" x-text="t('submit')"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct FIR -->
+                    <div x-show="scannerType === 'direct'" class="animate-fade-in">
+                        <div class="border-b border-gray-100 pb-4 mb-6 flex items-center gap-3">
+                            <div class="p-3 bg-red-100 text-red-600 rounded-lg"><i class="fas fa-file-signature text-2xl"></i></div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900 tracking-tight" x-text="t('direct_fir')">Direct FIR</h2>
+                            </div>
+                        </div>
+                        
+                        <div x-show="!receipt" class="bg-white">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">District / Pincode *</label>
+                                    <input type="text" x-model="complaintLoc" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Suspect ID *</label>
+                                    <input type="text" x-model="complaintSuspect" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Category *</label>
+                                    <select x-model="complaintCat" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                        <option>Financial Fraud / UPI</option>
+                                        <option>Phishing / Malicious Link</option>
+                                        <option>Deepfake / Harassment</option>
+                                        <option>Other</option>
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Incident Details *</label>
+                                    <textarea x-model="complaintDetails" rows="4" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none resize-none"></textarea>
+                                </div>
+                            </div>
+                            <button @click="fileComplaint(true)" :disabled="isSubmitting || !complaintLoc.trim() || !complaintSuspect.trim()" class="w-full bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-bold py-3.5 rounded shadow-lg transition text-lg" x-text="t('submit')"></button>
+                        </div>
+                    </div>
+
+                    <!-- Citizen Tracker View -->
+                    <div x-show="scannerType === 'track'" class="animate-fade-in">
+                        <h2 class="text-2xl font-bold text-gray-900 tracking-tight mb-6" x-text="t('track_fir')">Track Complaints</h2>
+                        <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                            <table class="w-full text-sm text-left text-gray-600">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-100 font-bold tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-3">FIR ID</th>
+                                        <th class="px-4 py-3">Date</th>
+                                        <th class="px-4 py-3">Category</th>
+                                        <th class="px-4 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    <tr x-show="myComplaints.length === 0">
+                                        <td colspan="4" class="px-4 py-6 text-center text-gray-500">No complaints filed yet.</td>
+                                    </tr>
+                                    <template x-for="c in myComplaints">
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="px-4 py-3 font-mono font-bold text-gray-900" x-text="c.fir_id"></td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500" x-text="c.timestamp"></td>
+                                            <td class="px-4 py-3 font-medium text-gray-800" x-text="c.category"></td>
+                                            <td class="px-4 py-3">
+                                                <span x-show="c.status === 'Pending Investigation'" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded border border-yellow-200">Pending</span>
+                                                <span x-show="c.status === 'Resolved'" class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded border border-green-200">Resolved</span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Shared Receipt View -->
+                    <div x-show="receipt && scannerType !== 'track'" class="animate-fade-in">
+                        <div id="receipt-content" class="bg-[#f8fff9] border border-green-400 border-l-4 p-8 rounded-lg shadow-sm mb-4">
+                            <div class="flex items-center justify-between mb-6 border-b border-green-200 pb-4">
+                                <div class="flex items-center gap-3">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" class="h-12">
+                                    <div>
+                                        <h4 class="text-green-800 font-extrabold text-xl tracking-tight">OFFICIAL FIR RECEIPT</h4>
+                                        <p class="text-xs font-bold text-green-600 uppercase">Govt. of India Cyber Node</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-5 rounded border border-gray-200 shadow-inner">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 text-sm">
+                                    <div><span class="font-bold text-gray-500 uppercase text-xs tracking-wider block mb-1">Tracking ID</span> <span class="text-gray-900 font-mono font-bold text-lg" x-text="receipt?.fir_id"></span></div>
+                                    <div><span class="font-bold text-gray-500 uppercase text-xs tracking-wider block mb-1">Routing Node</span> <span class="text-gray-900 font-semibold" x-text="receipt?.station_name"></span></div>
+                                    <div><span class="font-bold text-gray-500 uppercase text-xs tracking-wider block mb-1">Timestamp</span> <span class="text-gray-900" x-text="receipt?.timestamp"></span></div>
+                                    <div><span class="font-bold text-gray-500 uppercase text-xs tracking-wider block mb-1">Complainant</span> <span class="text-gray-900 font-semibold" x-text="receipt?.complainant"></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="downloadPDF()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded shadow transition flex items-center justify-center gap-2 mb-4">
+                            <i class="fas fa-file-pdf"></i> <span x-text="t('download_pdf')"></span>
+                        </button>
+                        
+                        <button @click="resetScan(); scannerType = 'text'" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded transition">
+                            Back to Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. ADMIN VIEW -->
+    <main x-show="view === 'admin'" class="flex-1 flex flex-col bg-gray-100 p-4 md:p-8">
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="flex items-center justify-between mb-8">
+                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">DFIB Central Command</h1>
+                <button @click="fetchComplaints()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded shadow-sm font-bold text-sm">
+                    <i class="fas fa-sync-alt" :class="isLoading ? 'fa-spin' : ''"></i> Refresh
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Visual Chart -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm lg:col-span-2">
+                    <h2 class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-4">Threat Analytics (By Category)</h2>
+                    <canvas id="threatChart" height="100"></canvas>
+                </div>
+                <!-- Stats -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute right-0 top-0 h-full w-2 bg-blue-500"></div>
+                        <div class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-2">Total Reports</div>
+                        <div class="text-4xl font-black text-blue-700 tracking-tight" x-text="complaints.length"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute right-0 top-0 h-full w-2 bg-yellow-500"></div>
+                        <div class="text-sm text-gray-500 font-bold uppercase tracking-wider mb-2">Pending Investigation</div>
+                        <div class="text-4xl font-black text-gray-900 tracking-tight" x-text="complaints.filter(c => c.status === 'Pending Investigation').length"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-600">
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-100 font-bold tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4">FIR ID</th>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Category</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="c in complaints">
+                                <tr class="bg-white hover:bg-gray-50">
+                                    <td class="px-6 py-3 font-mono font-bold text-gray-900" x-text="c.fir_id"></td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-xs text-gray-500" x-text="c.timestamp"></td>
+                                    <td class="px-6 py-3 font-bold text-xs uppercase" x-text="c.category"></td>
+                                    <td class="px-6 py-3">
+                                        <span x-show="c.status === 'Pending Investigation'" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">Pending</span>
+                                        <span x-show="c.status === 'Resolved'" class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">Resolved</span>
+                                    </td>
+                                    <td class="px-6 py-3">
+                                        <button x-show="c.status === 'Pending Investigation'" @click="resolveComplaint(c.fir_id)" class="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded text-xs font-bold transition">Mark Resolved</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const translations = {
+            en: {
+                title: "National Cyber Crime Portal", subtitle: "Empowering Citizens with AI-Driven Threat Intelligence", subtitle_short: "CITIZEN SERVICES PORTAL | GOVT. OF INDIA",
+                citizen_login: "Citizen Portal", admin_login: "Nodal Officer", verify_login: "Verify & Login", register: "Register Account",
+                text_scan: "SMS / Text Scan", media_scan: "Media Evidence", url_scan: "URL Scanner", upi_scan: "UPI Tracker",
+                direct_fir: "Direct FIR", track_fir: "Track Complaints", scan_content: "Scan Threat Database", submit: "Submit FIR to Servers",
+                download_pdf: "Download Official FIR (PDF)", logout: "Logout", announcement: "ANNOUNCEMENT:", threat_detected: "CRITICAL THREAT DETECTED", no_threat: "NO THREAT DETECTED"
+            },
+            hi: {
+                title: "राष्ट्रीय साइबर अपराध पोर्टल", subtitle: "नागरिकों को AI सुरक्षा से सशक्त बनाना", subtitle_short: "नागरिक सेवा पोर्टल | भारत सरकार",
+                citizen_login: "नागरिक पोर्टल", admin_login: "नोडल अधिकारी", verify_login: "लॉगिन करें", register: "पंजीकरण करें",
+                text_scan: "एसएमएस स्कैन", media_scan: "मीडिया साक्ष्य", url_scan: "यूआरएल स्कैनर", upi_scan: "यूपीआई ट्रैकर",
+                direct_fir: "सीधी एफआईआर", track_fir: "शिकायतें ट्रैक करें", scan_content: "डेटाबेस में स्कैन करें", submit: "सर्वर पर जमा करें",
+                download_pdf: "रसीद डाउनलोड करें (PDF)", logout: "लॉग आउट", announcement: "घोषणा:", threat_detected: "गंभीर खतरा!", no_threat: "सुरक्षित"
+            },
+            te: {
+                title: "జాతీయ సైబర్ క్రైమ్ పోర్టల్", subtitle: "AI భద్రతతో పౌరులను రక్షించడం", subtitle_short: "పౌర సేవల పోర్టల్ | భారత ప్రభుత్వం",
+                citizen_login: "సిటిజన్ పోర్టల్", admin_login: "నోడల్ ఆఫీసర్", verify_login: "లాగిన్ చేయండి", register: "నమోదు చేయండి",
+                text_scan: "SMS స్కాన్", media_scan: "మీడియా ఆధారాలు", url_scan: "URL స్కానర్", upi_scan: "UPI ట్రాకర్",
+                direct_fir: "ప్రత్యక్ష FIR", track_fir: "ఫిర్యాదులను ట్రాక్ చేయండి", scan_content: "డేటాబేస్‌ను స్కాన్ చేయండి", submit: "సర్వర్‌కు సమర్పించండి",
+                download_pdf: "రసీదు డౌన్‌లోడ్ (PDF)", logout: "లాగ్అవుట్", announcement: "ప్రకటన:", threat_detected: "ప్రమాదం కనుగొనబడింది!", no_threat: "సురక్షితం"
+            }
+        };
+
+        const API_URL = '/api';
+
+        function appData() {
+            return {
+                lang: 'en',
+                view: 'login', authTab: 'citizen_login',
+                username: '', password: '', regUsername: '', regPassword: '', adminUser: '', adminPass: '',
+                currentUser: null, isLoading: false,
+                scannerType: 'text', textInput: '', urlInput: '', upiInput: '', mediaFile: null,
+                isScanning: false, scanScore: null, scanLogs: [],
+                complaintLoc: '', complaintSuspect: '', complaintDetails: '', complaintCat: 'Financial Fraud / UPI',
+                isSubmitting: false, receipt: null,
+                complaints: [], myComplaints: [],
+                notification: { show: false, msg: '', type: 'success' },
+
+                t(key) { return translations[this.lang][key] || key; },
+
+                showNotify(msg, type='success') {
+                    this.notification = { show: true, msg, type };
+                    setTimeout(() => { this.notification.show = false; }, 3000);
+                },
+
+                handleFileChange(e) { if(e.target.files.length) this.mediaFile = e.target.files[0]; },
+
+                resetScan() { this.scanScore = null; this.scanLogs = []; this.receipt = null; this.isScanning = false; },
+
+                async addSystemLog(msg, delayMs) {
+                    this.scanLogs.push(msg);
+                    await new Promise(r => setTimeout(r, delayMs));
+                },
+
+                async _postJSON(endpoint, data) {
+                    const res = await fetch(API_URL + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                    if (!res.ok) throw new Error((await res.json()).detail || 'API Error');
+                    return res.json();
+                },
+
+                async loginCitizen() {
+                    this.isLoading = true;
+                    try {
+                        const data = await this._postJSON('/auth/login', { username: this.username, password: this.password, role: 'citizen' });
+                        this.currentUser = data.username;
+                        this.view = 'citizen';
+                        this.showNotify('Login Successful');
+                    } catch(e) { this.showNotify(e.message, 'error'); }
+                    this.isLoading = false;
+                },
+
+                async registerCitizen() {
+                    this.isLoading = true;
+                    try {
+                        await this._postJSON('/auth/register', { username: this.regUsername, password: this.regPassword });
+                        this.showNotify('Registered. Please login.');
+                        this.authTab = 'citizen_login';
+                    } catch(e) { this.showNotify(e.message, 'error'); }
+                    this.isLoading = false;
+                },
+
+                async loginAdmin() {
+                    this.isLoading = true;
+                    try {
+                        await this._postJSON('/auth/login', { username: this.adminUser, password: this.adminPass, role: 'admin' });
+                        this.currentUser = 'Nodal Officer';
+                        this.view = 'admin';
+                        this.fetchComplaints();
+                        this.showNotify('Admin Authenticated');
+                    } catch(e) { this.showNotify(e.message, 'error'); }
+                    this.isLoading = false;
+                },
+
+                logout() {
+                    this.view = 'login'; this.currentUser = null; this.resetScan();
+                },
+
+                async runScan(type) {
+                    this.isScanning = true; this.resetScan(); this.isScanning = true;
+                    await this.addSystemLog("[SYSTEM] Initiating Node Protocol...", 800);
+                    try {
+                        let score = 0;
+                        if(type === 'text') { await this.addSystemLog("[SYSTEM] Scanning text vectors...", 1000); score = (await this._postJSON('/scan/text', { text: this.textInput })).score; }
+                        else if(type === 'url') { await this.addSystemLog("[SYSTEM] Querying DNS Blacklist...", 1000); score = (await this._postJSON('/scan/url', { url: this.urlInput })).score; this.complaintSuspect = this.urlInput; }
+                        else if(type === 'upi') { await this.addSystemLog("[SYSTEM] Checking NPCI Grid...", 1000); score = (await this._postJSON('/scan/upi', { upi: this.upiInput })).score; this.complaintSuspect = this.upiInput; }
+                        else if(type === 'media') {
+                            await this.addSystemLog("[SYSTEM] Processing Tensors...", 1500);
+                            const fd = new FormData(); fd.append('file', this.mediaFile);
+                            score = (await (await fetch(API_URL + '/scan/media', { method: 'POST', body: fd })).json()).score;
+                        }
+                        this.scanScore = score;
+                    } catch(e) { this.showNotify('Scan Failed', 'error'); }
+                    this.isScanning = false;
+                },
+
+                async fileComplaint(isDirect) {
+                    this.isSubmitting = true;
+                    try {
+                        const payload = {
+                            user_location: this.complaintLoc, victim_name: this.currentUser, scammer_id: this.complaintSuspect,
+                            incident_category: isDirect ? this.complaintCat : this.scannerType.toUpperCase() + ' Threat',
+                            incident_details: this.complaintDetails, threat_score: isDirect ? 'Direct' : this.scanScore.toString()
+                        };
+                        const data = await this._postJSON('/complaints', payload);
+                        this.receipt = data.report;
+                        this.showNotify('FIR Submitted Successfully');
+                    } catch(e) { this.showNotify('Failed to submit', 'error'); }
+                    this.isSubmitting = false;
+                },
+
+                async fetchComplaints() {
+                    this.isLoading = true;
+                    try {
+                        this.complaints = (await (await fetch(API_URL + '/complaints')).json()).complaints;
+                        this.renderChart();
+                    } catch(e) { this.showNotify('Fetch failed', 'error'); }
+                    this.isLoading = false;
+                },
+
+                async fetchMyComplaints() {
+                    try {
+                        this.myComplaints = (await (await fetch(API_URL + `/complaints/user/${this.currentUser}`)).json()).complaints;
+                    } catch(e) { this.showNotify('Fetch failed', 'error'); }
+                },
+
+                async resolveComplaint(id) {
+                    try {
+                        await this._postJSON(`/complaints/${id}/resolve`, {});
+                        this.fetchComplaints();
+                    } catch(e) { this.showNotify('Error', 'error'); }
+                },
+
+                renderChart() {
+                    if(!document.getElementById('threatChart')) return;
+                    const counts = {};
+                    this.complaints.forEach(c => counts[c.category] = (counts[c.category]||0) + 1);
+                    if(window.myChart) window.myChart.destroy();
+                    window.myChart = new Chart(document.getElementById('threatChart'), {
+                        type: 'bar',
+                        data: { labels: Object.keys(counts), datasets: [{ label: 'Incidents', data: Object.values(counts), backgroundColor: '#3b82f6' }] }
+                    });
+                },
+
+                downloadPDF() {
+                    const el = document.getElementById('receipt-content');
+                    html2pdf().from(el).save(`FIR_${this.receipt.fir_id}.pdf`);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
