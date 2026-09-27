@@ -4,5 +4,3 @@ python-multipart
 opencv-python
 Pillow
 numpy
-transformers
-torch
